@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "embedkit"
+version = "0.1.0"
+description = "Train word embeddings from scratch with SGNS and evaluate topic coherence"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+[tool.setuptools.packages.find]
+include = ["embedkit*"]
