@@ -49,6 +49,7 @@ class InspectorTests(unittest.TestCase):
         for k,x in [('center',[]),('center',[True]),('center',[math.inf]),('outputs',[[0]]),('events',[{'row':0,'label':True}]),('events',[{'row':-1,'label':0}]),('lr',0),('lr',3),('lr','0.1')]:
             bad=copy.deepcopy(v);bad[k]=x
             with self.assertRaises(ValueError,msg=str((k,x))):validate(bad)
+        integral=copy.deepcopy(v);integral['events']=[{'row':0.0,'label':1.0}];self.assertEqual(inspect(integral)['input']['events'],integral['events'])
         bad=dict(v,extra=1)
         with self.assertRaises(ValueError):validate(bad)
     def test_original_files_untouched(self):
