@@ -3,3 +3,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+*.egg-info/
+build/
+dist/
