@@ -117,7 +117,18 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--markdown", dest="markdown_path", default=None)
             p.add_argument("--min-coherence", type=float, default=None)
             p.add_argument("--min-margin", type=float, default=None)
+    p = sub.add_parser("inspect", help="audit a fixed sampled objective and ordered update")
+    p.add_argument("--input", required=True, help="bounded JSON center/output/event input")
     args = parser.parse_args(argv)
+    if args.command == "inspect":
+        from .inspector import strict_json, inspect
+        try:
+            with open(args.input, encoding="utf-8") as fh:
+                text = fh.read(50001)
+            print(json.dumps(inspect(strict_json(text)), indent=2, sort_keys=True))
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"error: {exc}")
+        return 0
     return cmd_nearest(args) if args.command == "nearest" else cmd_evaluate(args)
 
 

@@ -36,3 +36,35 @@ Bounds worth stating: this is SGNS on a small synthetic corpus - it demonstrates
 ## License
 
 MIT
+
+## Inside the sampled step
+
+[Open the independent interactive inspector](https://midya8.github.io/embedkit/).
+Edit a center vector, output table and ordered labeled events. Inspect the stable
+sampled logistic objective, every gradient coordinate, all finite-difference
+checks, an output-gradient heatmap and a full original-policy sequential replay.
+Compare it with a frozen simultaneous-gradient step, with both losses evaluated
+on the same fixed events. Neither is claimed to guarantee descent.
+
+Twelve captured original pairs contain 72 real calls from the unchanged trainer;
+seven separate constructed controls expose repeated negative rows, conflicting
+labels, zero initialization, saturation, overshoot and shape limits. The
+original ±15 logit clamp and unique-negative/fallback sampler conventions are
+preserved and documented, not silently replaced with a textbook variant.
+The browser also computes every cosine neighbor from all 32 original trained
+vectors and retains the full 300-sentence corpus, labels and 512 coordinates.
+
+```sh
+python -m embedkit inspect --input event-input.json
+node --test tests/test_step.cjs tests/test_browser.cjs
+bash examples/verify_wheel.sh
+```
+
+53 Python tests include all 40 unchanged originals. Four Node/actual-Chrome tests
+compare nineteen complete reports (28,107 numeric values), 1,593 finite-difference
+checks, all fixture/row controls and all 992 neighbor similarities. CI also
+installs and verifies the packaged artifact outside the checkout. See [STEP.md](STEP.md)
+for the math, tolerances, full replay contract, bounds and prior-work attribution.
+The new inspector uses sequential binary64 reductions; the unchanged trainer
+keeps the Python runtime's original sum behavior. Captures originate on CPython
+3.10 and supported-runtime comparisons use declared tolerances.
