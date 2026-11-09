@@ -43,9 +43,9 @@ def validate(v):
     for event in e:
         if not isinstance(event, dict) or set(event) != {'row', 'label'}:
             raise ValueError('event requires row and label only')
-        if type(event['row']) is not int or not 0 <= event['row'] < len(o):
+        if type(event['row']) not in (int, float) or not math.isfinite(event['row']) or event['row'] != int(event['row']) or not 0 <= event['row'] < len(o):
             raise ValueError('invalid output row index')
-        if type(event['label']) is not int or event['label'] not in (0, 1):
+        if type(event['label']) not in (int, float) or event['label'] not in (0, 1):
             raise ValueError('label must be integer 0 or 1')
     number(v['lr'], 2)
     if v['lr'] <= 0:
@@ -106,7 +106,7 @@ def term(c, row, label):
 
 
 def objective(c, outputs, events):
-    return total(term(c, outputs[e['row']], e['label'])[1] for e in events)
+    return total(term(c, outputs[int(e['row'])], e['label'])[1] for e in events)
 
 
 def inspect(v):
@@ -116,7 +116,7 @@ def inspect(v):
     go = [[0.0]*len(c) for _ in o]
     frozen = []
     for event in events:
-        j, label = event['row'], event['label']
+        j, label = int(event['row']), event['label']
         dot, loss, factor = term(c,o[j],label)
         dc = [factor*x for x in o[j]]
         do = [factor*x for x in c]
@@ -128,7 +128,7 @@ def inspect(v):
     sc, so = c[:], copy.deepcopy(o)
     trajectory = []
     for event in events:
-        j, label = event['row'], event['label']
+        j, label = int(event['row']), event['label']
         before_c, before_o = sc[:], so[j][:]
         dot, loss, true_factor = term(sc,so[j],label)
         clipped = max(-15.0,min(15.0,dot))
