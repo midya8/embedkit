@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "embedkit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Train word embeddings from scratch with SGNS and evaluate topic coherence"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,6 +15,7 @@ include = ["embedkit*"]
 
 [project.scripts]
 embedkit = "embedkit.cli:main"
+embedkit-sampler = "embedkit.sampler_cli:main"
 
 [tool.setuptools.package-data]
 embedkit = ["data/*.json"]
