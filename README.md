@@ -68,3 +68,31 @@ for the math, tolerances, full replay contract, bounds and prior-work attributio
 The new inspector uses sequential binary64 reductions; the unchanged trainer
 keeps the Python runtime's original sum behavior. Captures originate on CPython
 3.10 and supported-runtime comparisons use declared tolerances.
+
+## The noise behind the negatives
+
+[Open the exact sampler audit](https://midya8.github.io/embedkit/sampler.html).
+The existing sampler excludes positive context and earlier negatives, retries20
+times and then chooses the first eligible sorted word. A new native Fraction and
+independent browser BigInt audit counts exact53-bit grid intervals and propagates
+the complete bounded subset law. Compare finite retry with unlimited conditional
+rejection on the same proposals: every state, inclusion probability, fallback
+rate, expected random-call count and final-subset total variation is inspectable.
+
+The default is a constructed dominant-positive stress case, not a corpus-quality
+result. Probabilities are exact under independent uniform-grid proposals, **not**
+a claim that deterministic PRNG outputs are IID or an exact law for a fixed seed.
+Multi-draw audits are bounded to8 words; the unchanged32-word corpus is available
+for one draw. Original training, all prior fixtures and the sampled-step page
+remain unchanged. See [SAMPLER.md](SAMPLER.md) for the full contract and sources.
+
+```sh
+python -m embedkit.sampler_cli --input sampler-input.json
+embedkit-sampler --input sampler-input.json
+```
+
+61 Python and8 Node/actual-Chrome tests include all53 previous Python and4 previous
+Node/Chrome tests. The new audit has33 complete cross-language reports,195 subset
+states, an independent10,844-path small-grid oracle and1,659 actual-sampler boundary
+calls. It does not infer training quality or expected ordered SGD updates from
+marginal inclusion probabilities.

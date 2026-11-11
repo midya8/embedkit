@@ -42,7 +42,7 @@ for i,chunk in enumerate(chunks):
 manifest=[{k:v for k,v in w.items() if k not in ('report','original_returns')} for w in witnesses]
 save(root/'embedkit/data/inputs.json',manifest)
 (root/'docs/data.js').write_text('window.EMBED_DATA='+json.dumps({'original':fixture,'fixtures':manifest},separators=(',',':'))+';\n')
-paths=['embedkit/model.py','embedkit/evaluate.py','embedkit/report.py','embedkit/tokenize.py','examples/demo.sh','examples/data/corpus.txt','examples/data/eval.json','examples/data/gen_corpus.py']+[str(p.relative_to(root)) for p in sorted((root/'tests').glob('test_*.py')) if p.name!='test_inspector.py']
+paths=['embedkit/model.py','embedkit/evaluate.py','embedkit/report.py','embedkit/tokenize.py','examples/demo.sh','examples/data/corpus.txt','examples/data/eval.json','examples/data/gen_corpus.py']+[str(p.relative_to(root)) for p in sorted((root/'tests').glob('test_*.py')) if p.name not in ('test_inspector.py','test_sampler.py')]
 save(root/'embedkit/data/original-hashes.json',{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in paths})
 print('Original',len(emb.vocab),'words',len(sentences),'sentences',fixture['coherence']['mean_coherence'],fixture['separation']['margin'])
 print(len(witnesses),'complete reports; original events',sum(len(w['value']['events']) for w in witnesses if w['kind']=='captured-original'),'numeric checks',sum(len(w['report']['gradient_checks']) for w in witnesses))

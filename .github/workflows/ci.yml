@@ -22,7 +22,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/test_step.cjs tests/test_browser.cjs
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+        with:
+          chrome-version: stable
+      - run: node --test --test-concurrency=1 tests/test_step.cjs tests/test_browser.cjs tests/test_sampler.cjs tests/test_sampler_browser.cjs
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
   installed:
     runs-on: ubuntu-latest
     steps:
@@ -39,4 +45,5 @@ jobs:
         with:
           python-version: '3.10'
       - run: python scripts/regenerate.py
+      - run: python scripts/regenerate_sampler.py
       - run: git diff --exit-code
