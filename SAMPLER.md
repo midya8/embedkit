@@ -20,19 +20,19 @@ the deterministic Mersenne Twister. A fixed seed defines one deterministic run,
 not a random experiment over this model. Smaller grids are explicit counterfactuals.
 
 The unchanged binary search chooses the first stored threshold strictly greater
-than r, or the final word. Therefore interval endpoints are clamp(ceil(D*c_i),0,D)
+than r, or the final word. Therefore interval endpoints are `clamp(ceil(D*c_i),0,D)`
 for all thresholds except the last, with endpoints0 andD. The final cumulative
 threshold is never compared and does not set the final interval's upper bound.
 Repeated thresholds can give words zero proposal mass. Python Fraction and
 independent DataView-decoded binary64/BigInt use the exact stored values.
 
-For excluded set E, let e=sum(p_i for i in E), A be the retry budget and f the
-first eligible index in sorted order. Let G=sum(e^t, t=0..A-1). Then:
+For excluded set E, let `e=sum(p_i for i in E)`, A be the retry budget and f the
+first eligible index in sorted order. Let `G=sum(e^t, t=0..A-1)`. Then:
 
-- P(next=i)=p_i*G + e^A*1[i=f] for eligible i.
-- P(fallback)=e^A.
-- E(number of proposals)=G, including failures on the final attempt.
-- Unlimited conditional rejection gives p_i/(1-e), provided e<1.
+- `P(next=i)=p_i*G + e^A*1[i=f]` for eligible i.
+- `P(fallback)=e^A`.
+- `E(number of proposals)=G`, including failures on the final attempt.
+- Unlimited conditional rejection gives `p_i/(1-e)`, provided e<1.
 
 The original budget is20;1..20 is supported for counterfactuals. If e=1,
 finite retry deterministically picks f afterA draws but unlimited rejection
