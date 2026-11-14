@@ -2,16 +2,20 @@
 
 Train word embeddings from scratch with pure-Python SGNS, then evaluate how well they separate topics.
 
-EmbedKit implements Word2Vec's skip-gram with negative sampling with no dependencies: for each (center, context) pair it pushes the center vector toward the context vector and away from k negatives drawn from the unigram^0.75 distribution. All randomness - weight init, pair shuffling, negative sampling - comes from one seeded RNG, so a corpus and seed always reproduce the same vectors. A coherence evaluator then scores how often a word's nearest neighbors stay in its topic cluster, with JSON, Markdown and terminal reports and CI gates.
+EmbedKit implements Word2Vec's skip-gram with negative sampling with no dependencies: for each (center, context) pair it pushes the center vector toward the context vector and away from k negatives drawn from the unigram^0.75 distribution. All randomness - weight init, pair shuffling, negative sampling - comes from one seeded RNG, so the same corpus, parameters, seed and runtime reproduce the vectors. A coherence evaluator then scores how often a word's nearest neighbors stay in its topic cluster, with JSON, Markdown and terminal reports and CI gates.
 
-## Why
+## Choose a tool
 
-Embeddings are the substrate of retrieval, RAG and semantic search, but most projects treat them as an API call. Training them from scratch shows what the objective actually does:
+| Question | Entry point | Result |
+| --- | --- | --- |
+| What does SGNS learn on this corpus? | `nearest`, `evaluate` | Cosine neighbors, topic coherence and separation |
+| What happens in one sampled update? | `inspect`, `docs/index.html` | Sequential replay, simultaneous-gradient control and coordinate checks |
+| How do retries and fallback affect negative selection? | `embedkit.sampler_cli`, `docs/sampler.html` | Exact bounded subset probabilities under a uniform-grid proposal model |
 
-- **real SGNS training** - sigmoid-gradient SGD over (center, context) pairs with k negatives per pair, clamped for numerical stability; window size, dimension, negative count, learning rate and epochs are all parameters;
-- **deterministic by construction** - one seeded RNG drives initialization, epoch shuffling and negative draws, so runs are reproducible and tests can pin quality numbers;
-- **unigram^0.75 negative sampling** - the classic Word2Vec smoothing of the frequency distribution, drawn via binary search over a cumulative table;
-- **coherence evaluation** - given labeled topic clusters, score each word by the fraction of its k nearest neighbors in the same cluster, plus an intra-vs-inter cluster separation margin; `--min-coherence` and `--min-margin` turn quality into a CI gate.
+Training uses sigmoid-gradient SGD, a unigram^0.75 proposal table and one seeded
+RNG for initialization, shuffling and draws. The sampler's exclusions and fallback
+are part of the implementation, not independent draws from that proposal table.
+The synthetic topic scores below are fixture checks, not a retrieval benchmark.
 
 ## Usage
 
@@ -27,7 +31,7 @@ The corpus is plain text (tokenized on words, split into sentences on `.`, `!`, 
 
 ## Verification
 
-- 40 unit tests cover tokenization, the Embeddings API (similarity symmetry, self-exclusion, lexicographic tie-breaks, zero-vector handling), negative sampling, training determinism (same seed bit-identical, different seed differs), `min_count` filtering and parameter validation, trained-quality assertions on the checked-in corpus (same-topic similarity beats cross-topic, 90%+ neighbor purity), coherence and separation math including error cases, all three report formats, and the CLI end to end including both sides of every gate.
+- The original 40 unit tests cover tokenization, the Embeddings API (similarity symmetry, self-exclusion, lexicographic tie-breaks, zero-vector handling), negative sampling, training determinism (same seed bit-identical, different seed differs), `min_count` filtering and parameter validation, trained-quality assertions on the checked-in corpus (same-topic similarity beats cross-topic, 90%+ neighbor purity), coherence and separation math including error cases, all three report formats, and the CLI end to end including both sides of every gate.
 - `bash examples/demo.sh` runs fully offline: trains, shows same-topic neighbors, passes the quality gates, asserts report contents, and confirms an impossible gate fails.
 - CI runs the same suite across Python 3.10-3.13.
 
@@ -37,7 +41,7 @@ Bounds worth stating: this is SGNS on a small synthetic corpus - it demonstrates
 
 MIT
 
-## Inside the sampled step
+## Sampled-step replay
 
 [Open the independent interactive inspector](https://midya8.github.io/embedkit/).
 Edit a center vector, output table and ordered labeled events. Inspect the stable
@@ -69,12 +73,12 @@ The new inspector uses sequential binary64 reductions; the unchanged trainer
 keeps the Python runtime's original sum behavior. Captures originate on CPython
 3.10 and supported-runtime comparisons use declared tolerances.
 
-## The noise behind the negatives
+## Exact sampler audit
 
 [Open the exact sampler audit](https://midya8.github.io/embedkit/sampler.html).
-The existing sampler excludes positive context and earlier negatives, retries20
+The existing sampler excludes positive context and earlier negatives, retries 20
 times and then chooses the first eligible sorted word. A new native Fraction and
-independent browser BigInt audit counts exact53-bit grid intervals and propagates
+independent browser BigInt audit counts exact 53-bit grid intervals and propagates
 the complete bounded subset law. Compare finite retry with unlimited conditional
 rejection on the same proposals: every state, inclusion probability, fallback
 rate, expected random-call count and final-subset total variation is inspectable.
@@ -82,7 +86,7 @@ rate, expected random-call count and final-subset total variation is inspectable
 The default is a constructed dominant-positive stress case, not a corpus-quality
 result. Probabilities are exact under independent uniform-grid proposals, **not**
 a claim that deterministic PRNG outputs are IID or an exact law for a fixed seed.
-Multi-draw audits are bounded to8 words; the unchanged32-word corpus is available
+Multi-draw audits are bounded to 8 words; the unchanged 32-word corpus is available
 for one draw. Original training, all prior fixtures and the sampled-step page
 remain unchanged. See [SAMPLER.md](SAMPLER.md) for the full contract and sources.
 
@@ -91,8 +95,8 @@ python -m embedkit.sampler_cli --input sampler-input.json
 embedkit-sampler --input sampler-input.json
 ```
 
-61 Python and8 Node/actual-Chrome tests include all53 previous Python and4 previous
-Node/Chrome tests. The new audit has33 complete cross-language reports,195 subset
-states, an independent10,844-path small-grid oracle and1,659 actual-sampler boundary
+61 Python and 8 Node/actual-Chrome tests include all 53 previous Python and 4 previous
+Node/Chrome tests. The new audit has 33 complete cross-language reports, 195 subset
+states, an independent 10,844-path small-grid oracle and 1,659 actual-sampler boundary
 calls. It does not infer training quality or expected ordered SGD updates from
 marginal inclusion probabilities.
