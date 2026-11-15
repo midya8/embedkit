@@ -49,3 +49,6 @@ from embedkit.sampler import audit
 assert json.load(open('sampler-module-report.json'))==audit(json.load(open('sampler-input.json')))
 print('Installed outside checkout: 10 modules, all old training/19 step reports, 33 sampler reports, both sampler entrypoints')
 PYCODE
+
+# Packaged fixtures and installed engines, independent of the checkout import path.
+"$TMP/venv/bin/python" "$ROOT/tests/test_coordinates.py" -v
