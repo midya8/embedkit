@@ -100,3 +100,32 @@ Node/Chrome tests. The new audit has 33 complete cross-language reports, 195 sub
 states, an independent 10,844-path small-grid oracle and 1,659 actual-sampler boundary
 calls. It does not infer training quality or expected ordered SGD updates from
 marginal inclusion probabilities.
+
+## Coordinate labels and ordered updates
+
+Four tests in `tests/test_coordinates.py` apply matched signed coordinate
+permutations to center and output vectors. They check both update policies,
+full sequential trajectories and clamp decisions in 38 archived-report
+transformations and final updates in 48 generated cases. The complete trained
+32-word cosine table (1,024 ordered pairs, including self-similarities) and all
+neighbor orders also agree after the same transformation. A center-only sign
+change and unequal coordinate scaling are separate failure controls.
+
+Reordering fixed events preserves the frozen summed objective, its gradients
+and the simultaneous update within tolerance. It does **not** preserve the
+sequential update: a repeated-row control produces different final vectors
+and loss when the event order is reversed. This is why marginal negative-word
+inclusion probabilities do not determine an expected ordered training update.
+
+These are finite consistency regressions at relative tolerance 2e-11, not an
+independent gradient oracle, bitwise invariance, arbitrary-basis invariance or
+a training-quality improvement. The current suite has 65 Python tests and the
+same eight Node/actual-Chrome tests. All 61 earlier Python tests remain; trainer,
+inspector, sampler, browser, fixtures and schemas are unchanged. The complete
+installed-package check also runs the four new tests outside the checkout.
+
+Mutation controls expose that limit: reusing coordinate zero in the center
+gradient or using only the first cosine coordinate fails the new tests. An
+incorrect sequential update that uses the already-updated center **passes**
+them because it still respects these coordinate symmetries. Existing full
+report/replay tests, not these consistency laws, own that update-order check.
