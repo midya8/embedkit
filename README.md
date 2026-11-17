@@ -1,131 +1,42 @@
-# EmbedKit
+# embedkit
 
-Train word embeddings from scratch with pure-Python SGNS, then evaluate how well they separate topics.
-
-EmbedKit implements Word2Vec's skip-gram with negative sampling with no dependencies: for each (center, context) pair it pushes the center vector toward the context vector and away from k negatives drawn from the unigram^0.75 distribution. All randomness - weight init, pair shuffling, negative sampling - comes from one seeded RNG, so the same corpus, parameters, seed and runtime reproduce the vectors. A coherence evaluator then scores how often a word's nearest neighbors stay in its topic cluster, with JSON, Markdown and terminal reports and CI gates.
-
-## Choose a tool
-
-| Question | Entry point | Result |
-| --- | --- | --- |
-| What does SGNS learn on this corpus? | `nearest`, `evaluate` | Cosine neighbors, topic coherence and separation |
-| What happens in one sampled update? | `inspect`, `docs/index.html` | Sequential replay, simultaneous-gradient control and coordinate checks |
-| How do retries and fallback affect negative selection? | `embedkit.sampler_cli`, `docs/sampler.html` | Exact bounded subset probabilities under a uniform-grid proposal model |
-
-Training uses sigmoid-gradient SGD, a unigram^0.75 proposal table and one seeded
-RNG for initialization, shuffling and draws. The sampler's exclusions and fallback
-are part of the implementation, not independent draws from that proposal table.
-The synthetic topic scores below are fixture checks, not a retrieval benchmark.
-
-## Usage
+Word2Vec (skip-gram with negative sampling) in plain Python, plus a small check of whether the learned vectors keep topics apart. I wanted to write the SGNS update by hand once instead of just calling gensim.
 
 ```bash
-python3 -m embedkit nearest --corpus examples/data/corpus.txt --word gradient \
-  --dim 16 --epochs 30 --seed 7
-python3 -m embedkit evaluate --corpus examples/data/corpus.txt \
+python -m embedkit nearest --corpus examples/data/corpus.txt --word gradient --dim 16 --epochs 30 --seed 7
+```
+
+```
+  0.9146  loss
+  0.8975  backprop
+  0.8941  descent
+  0.8855  epoch
+  0.8716  weights
+```
+
+Training takes a few seconds on the bundled corpus, which is 300 generated sentences about three topics (ML, NLP, systems). Same seed, same vectors.
+
+To score it:
+
+```bash
+python -m embedkit evaluate --corpus examples/data/corpus.txt \
   --eval examples/data/eval.json --dim 16 --epochs 30 --seed 7 \
-  --json report.json --markdown report.md --min-coherence 0.9 --min-margin 0.4
+  --min-coherence 0.9 --min-margin 0.4
 ```
 
-The corpus is plain text (tokenized on words, split into sentences on `.`, `!`, `?`). The eval file is JSON with a `clusters` object mapping topic names to word lists. On the checked-in three-topic corpus (ML / NLP / systems, regenerated deterministically by `examples/data/gen_corpus.py`), seed 7 reaches mean coherence 1.0 and separation margin 0.60: every evaluated word's three nearest neighbors are same-topic words.
+`eval.json` maps each topic to a list of words. Coherence is how often a word's nearest neighbors are in its own topic. With seed 7 it gets 1.0 coherence and a 0.60 separation margin. That's on a corpus I built to be easy to separate, so it shows the training loop works, not that it would do well on real text.
 
-## Verification
+## How it trains
 
-- The original 40 unit tests cover tokenization, the Embeddings API (similarity symmetry, self-exclusion, lexicographic tie-breaks, zero-vector handling), negative sampling, training determinism (same seed bit-identical, different seed differs), `min_count` filtering and parameter validation, trained-quality assertions on the checked-in corpus (same-topic similarity beats cross-topic, 90%+ neighbor purity), coherence and separation math including error cases, all three report formats, and the CLI end to end including both sides of every gate.
-- `bash examples/demo.sh` runs fully offline: trains, shows same-topic neighbors, passes the quality gates, asserts report contents, and confirms an impossible gate fails.
-- CI runs the same suite across Python 3.10-3.13.
+For each (center, context) pair, the center vector gets nudged toward the context word and away from k negative words sampled from the unigram distribution raised to 0.75. Everything random (init, shuffling, negatives) comes from one seeded RNG.
 
-Bounds worth stating: this is SGNS on a small synthetic corpus - it demonstrates the training mechanics and evaluation loop, it does not produce embeddings comparable to models trained on large natural corpora. The demo corpus is well separated by construction, so coherence 1.0 there shows the objective learns the structure it is given, not that the method solves topic modeling. For a classical non-neural baseline on real text, PPMI + SVD over a co-occurrence matrix is the usual alternative.
+## Going deeper
 
-## License
+Two browser pages for looking inside:
 
-MIT
+- https://midya8.github.io/embedkit/ replays a single training update and checks every gradient against finite differences (`python -m embedkit inspect`). STEP.md.
+- `sampler.html` works out how the negative sampler behaves, including its quirk of retrying 20 times and then falling back to the first eligible word. SAMPLER.md.
 
-## Sampled-step replay
+## Tests
 
-[Open the independent interactive inspector](https://midya8.github.io/embedkit/).
-Edit a center vector, output table and ordered labeled events. Inspect the stable
-sampled logistic objective, every gradient coordinate, all finite-difference
-checks, an output-gradient heatmap and a full original-policy sequential replay.
-Compare it with a frozen simultaneous-gradient step, with both losses evaluated
-on the same fixed events. Neither is claimed to guarantee descent.
-
-Twelve captured original pairs contain 72 real calls from the unchanged trainer;
-seven separate constructed controls expose repeated negative rows, conflicting
-labels, zero initialization, saturation, overshoot and shape limits. The
-original ±15 logit clamp and unique-negative/fallback sampler conventions are
-preserved and documented, not silently replaced with a textbook variant.
-The browser also computes every cosine neighbor from all 32 original trained
-vectors and retains the full 300-sentence corpus, labels and 512 coordinates.
-
-```sh
-python -m embedkit inspect --input event-input.json
-node --test tests/test_step.cjs tests/test_browser.cjs
-bash examples/verify_wheel.sh
-```
-
-53 Python tests include all 40 unchanged originals. Four Node/actual-Chrome tests
-compare nineteen complete reports (28,107 numeric values), 1,593 finite-difference
-checks, all fixture/row controls and all 992 neighbor similarities. CI also
-installs and verifies the packaged artifact outside the checkout. See [STEP.md](STEP.md)
-for the math, tolerances, full replay contract, bounds and prior-work attribution.
-The new inspector uses sequential binary64 reductions; the unchanged trainer
-keeps the Python runtime's original sum behavior. Captures originate on CPython
-3.10 and supported-runtime comparisons use declared tolerances.
-
-## Exact sampler audit
-
-[Open the exact sampler audit](https://midya8.github.io/embedkit/sampler.html).
-The existing sampler excludes positive context and earlier negatives, retries 20
-times and then chooses the first eligible sorted word. A new native Fraction and
-independent browser BigInt audit counts exact 53-bit grid intervals and propagates
-the complete bounded subset law. Compare finite retry with unlimited conditional
-rejection on the same proposals: every state, inclusion probability, fallback
-rate, expected random-call count and final-subset total variation is inspectable.
-
-The default is a constructed dominant-positive stress case, not a corpus-quality
-result. Probabilities are exact under independent uniform-grid proposals, **not**
-a claim that deterministic PRNG outputs are IID or an exact law for a fixed seed.
-Multi-draw audits are bounded to 8 words; the unchanged 32-word corpus is available
-for one draw. Original training, all prior fixtures and the sampled-step page
-remain unchanged. See [SAMPLER.md](SAMPLER.md) for the full contract and sources.
-
-```sh
-python -m embedkit.sampler_cli --input sampler-input.json
-embedkit-sampler --input sampler-input.json
-```
-
-61 Python and 8 Node/actual-Chrome tests include all 53 previous Python and 4 previous
-Node/Chrome tests. The new audit has 33 complete cross-language reports, 195 subset
-states, an independent 10,844-path small-grid oracle and 1,659 actual-sampler boundary
-calls. It does not infer training quality or expected ordered SGD updates from
-marginal inclusion probabilities.
-
-## Coordinate labels and ordered updates
-
-Four tests in `tests/test_coordinates.py` apply matched signed coordinate
-permutations to center and output vectors. They check both update policies,
-full sequential trajectories and clamp decisions in 38 archived-report
-transformations and final updates in 48 generated cases. The complete trained
-32-word cosine table (1,024 ordered pairs, including self-similarities) and all
-neighbor orders also agree after the same transformation. A center-only sign
-change and unequal coordinate scaling are separate failure controls.
-
-Reordering fixed events preserves the frozen summed objective, its gradients
-and the simultaneous update within tolerance. It does **not** preserve the
-sequential update: a repeated-row control produces different final vectors
-and loss when the event order is reversed. This is why marginal negative-word
-inclusion probabilities do not determine an expected ordered training update.
-
-These are finite consistency regressions at relative tolerance 2e-11, not an
-independent gradient oracle, bitwise invariance, arbitrary-basis invariance or
-a training-quality improvement. The current suite has 65 Python tests and the
-same eight Node/actual-Chrome tests. All 61 earlier Python tests remain; trainer,
-inspector, sampler, browser, fixtures and schemas are unchanged. The complete
-installed-package check also runs the four new tests outside the checkout.
-
-Mutation controls expose that limit: reusing coordinate zero in the center
-gradient or using only the first cosine coordinate fails the new tests. An
-incorrect sequential update that uses the already-updated center **passes**
-them because it still respects these coordinate symmetries. Existing full
-report/replay tests, not these consistency laws, own that update-order check.
+`python -m unittest discover -s tests` and `bash examples/demo.sh`. MIT.
